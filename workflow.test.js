@@ -882,7 +882,6 @@ function runPrefixTitleBlock({ commitPrefix, passed, reviewFlagged }) {
       COMMIT_PREFIX: commitPrefix ?? "",
       PASSED: passed ?? "true",
       REVIEW_FLAGGED: reviewFlagged ?? "false",
-      today: "2026-08-22",
     },
   });
 }
@@ -892,15 +891,33 @@ test("an empty commit-prefix (the default) leaves the title bare, with no leadin
   // repos, so it now defaults to no prefix at all — a leading space left
   // over from naively prepending "$COMMIT_PREFIX " would be a visible typo
   // on every "What's new" card and in every commit subject.
-  assert.equal(runPrefixTitleBlock({ commitPrefix: "" }), "Update dependencies (2026-08-22)");
+  assert.equal(runPrefixTitleBlock({ commitPrefix: "" }), "Update dependencies");
   assert.equal(
     runPrefixTitleBlock({ commitPrefix: "", passed: "false" }),
-    "Update dependencies (2026-08-22) — CHECKS FAILING",
+    "Update dependencies — CHECKS FAILING",
   );
   assert.equal(
     runPrefixTitleBlock({ commitPrefix: "", passed: "true", reviewFlagged: "true" }),
-    "Update dependencies (2026-08-22) — NEEDS HUMAN REVIEW",
+    "Update dependencies — NEEDS HUMAN REVIEW",
   );
+});
+
+test("the title carries no run date, so the Play card gets no build stamp", () => {
+  // The title becomes the merge commit's subject, and on the Android
+  // consumers that subject is a "What's new" bullet. A run date there is
+  // the one part that varies week to week and the one part a user cannot
+  // act on. Asserted as an absence, so re-adding it to tell weekly batches
+  // apart fails here rather than on a store listing: the commit's own
+  // author date, the `deps/update-<date>` branch and the PR all still
+  // record when a batch ran.
+  for (const passed of ["true", "false"]) {
+    for (const reviewFlagged of ["true", "false"]) {
+      const title = runPrefixTitleBlock({ commitPrefix: "", passed, reviewFlagged });
+      assert.match(title, /^Update dependencies/);
+      assert.doesNotMatch(title, /\d{4}-\d{2}-\d{2}/);
+      assert.doesNotMatch(title, /[()]/);
+    }
+  }
 });
 
 test("a non-empty commit-prefix still ships with exactly one separating space", () => {
@@ -908,10 +925,10 @@ test("a non-empty commit-prefix still ships with exactly one separating space", 
   // `internal:` category, or a bespoke one) gets the same single-space
   // join the hardcoded prefix used to produce — this is a config knob now,
   // not a change in what a supplied prefix looks like.
-  assert.equal(runPrefixTitleBlock({ commitPrefix: "internal:" }), "internal: Update dependencies (2026-08-22)");
+  assert.equal(runPrefixTitleBlock({ commitPrefix: "internal:" }), "internal: Update dependencies");
   assert.equal(
     runPrefixTitleBlock({ commitPrefix: "deps:", passed: "false" }),
-    "deps: Update dependencies (2026-08-22) — CHECKS FAILING",
+    "deps: Update dependencies — CHECKS FAILING",
   );
 });
 
